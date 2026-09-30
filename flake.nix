@@ -29,9 +29,6 @@
       nixpkgs.lib.genAttrs systems (system:
         f nixpkgs.legacyPackages.${system});
     gitRev = helix.rev or helix.dirtyRev or null;
-    # Bind the flake input up front: inside the `packages`/`overlays` lets,
-    # the name `helix` is shadowed by the wrapper package (let bindings are
-    # recursive in Nix).
     helixSrc = helix;
   in {
     packages = eachSystem (pkgs: let

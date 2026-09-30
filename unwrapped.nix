@@ -31,19 +31,14 @@ rustPlatform.buildRustPackage (
     '';
   in
     {
-      # Not pname+version: that combination forces name/version during
-      # derivationStrict, which cycles with importCargoLock's eval-time git
-      # fetching (nixpkgs itself uses fetchCargoVendor with a hash instead).
       name = "helix-unwrapped-${version}";
 
       src = helixSrc;
 
-      # Deviation from nixpkgs: allows building Cargo.lock git dependencies
-      # without `outputHashes`, which is convenient when tracking master.
-      cargoLock = {
-        lockFile = "${helixSrc}/Cargo.lock";
-        allowBuiltinFetchGit = true;
-      };
+      # fetchCargoVendor, like nixpkgs: a single fixed-output derivation for
+      # all cargo dependencies, so it is substitutable and cacheable.
+      # update.sh refreshes the hash automatically when Cargo.lock changes.
+      cargoHash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
 
       nativeBuildInputs = [
         installShellFiles

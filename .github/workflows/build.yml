@@ -7,6 +7,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     env:
       CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
     steps:
@@ -21,11 +23,21 @@ jobs:
           extra_nix_config: |
             access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
 
+      # Builds .#helix, auto-fixing cargoHash if Cargo.lock changed.
       - name: Build
-        run: nix build .#helix --accept-flake-config -L
+        run: ./build.sh
 
-      # Push the build closure (helix, runtime, grammars) to the mtul cachix
-      # cache. Requires the CACHIX_AUTH_TOKEN repository secret.
+      # Commit the auto-fixed cargoHash, if any.
+      - name: Commit cargoHash fix
+        if: env.CARGO_HASH_CHANGED == '1'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git commit -am "cargoHash: auto-update"
+          git push
+
+      # Push the full build closure (including build-time deps like the
+      # cargo vendor dir), not just the runtime closure of `result`.
       - name: Push to cachix
         if: env.CACHIX_AUTH_TOKEN != ''
-        run: nix run nixpkgs#cachix -- push mtul result
+        run: nix run nixpkgs#cachix -- push mtul "$(nix eval --raw .#helix.drvPath)"

@@ -31,10 +31,10 @@ GitHub Actions auto-update and a `mtul` cachix binary cache.
   version read from the workspace root `Cargo.toml` (`[workspace.package]`;
   `helix-term/Cargo.toml` only has `version.workspace = true`).
 - Keep packaging aligned with nixpkgs'
-  `pkgs/by-name/he/helix{,-unwrapped}/package.nix`. The one deliberate
-  deviation: `cargoLock.allowBuiltinFetchGit = true` (no cargo hash and no
-  `outputHashes` to maintain when tracking master) — nixpkgs disallows this;
-  note it in comments if adding more deviations.
+  `pkgs/by-name/he/helix{,-unwrapped}/package.nix`, including
+  `fetchCargoVendor` + `cargoHash`. `build.sh` auto-fixes `cargoHash` when
+  Cargo.lock changes (CI commits the fix); never hand-edit it unless
+  `build.sh` is unavailable.
 - Grammars that fail to build are fixed in `grammarsOverlay` inside
   `package.nix` (e.g. `NIX_CFLAGS_COMPILE = "-std=gnu17"` for C23/glibc
   conflicts, `dontPatch = true` when nixpkgs' patch is already in the pinned
@@ -72,7 +72,12 @@ GitHub Actions auto-update and a `mtul` cachix binary cache.
   verify a `.narinfo` (URL is the bare store hash, no package name) returns
   200 after "successful" pushes.
 - `nix flake update helix` alone is not enough: `grammars.json` must be
-  regenerated for the new rev (use `update.sh`).
+  regenerated for the new rev and `cargoHash` re-fixed (both handled by
+  `update.sh`).
+- CI pushes the full BUILD closure (`cachix push mtul $(nix eval --raw
+  .#helix.drvPath)`), so build-time deps like the cargo vendor dir are also
+  cached; a runtime-only `cachix push result` leaves consumers rebuilding
+  source-prep derivations locally.
 - Locally, Nix caches flake-ref resolution for ~1h: after pushing a new
   commit, `nix build github:mtul0729/helix-flake#...` may silently evaluate
   the OLD commit — use `--refresh` when verifying pushes.

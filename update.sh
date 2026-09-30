@@ -11,7 +11,7 @@ helix_src="$(nix eval --raw .#helix-unwrapped.src)"
 nix-shell -p nurl python3 --run \
   "python3 generate-grammars.py '$helix_src/languages.toml' -o grammars.json -j 16"
 
-nix build .#helix --accept-flake-config -L
+./build.sh
 
 new_rev="$(nix flake metadata --json | jq -r '.locks.nodes.helix.locked.rev')"
 echo "helix updated to $new_rev"
