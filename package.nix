@@ -124,7 +124,7 @@ in
     '';
 
     passthru = {
-      inherit (helix-unwrapped) updateScript helixSrc;
+      inherit (helix-unwrapped) updateScript src;
       runtime = runtimeDir;
       tree-sitter-grammars = helixTreeSitterGrammars;
     };

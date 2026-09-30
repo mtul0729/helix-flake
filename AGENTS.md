@@ -10,8 +10,9 @@ GitHub Actions auto-update and a `mtul` cachix binary cache.
   (`packages.helix` / `packages.helix-unwrapped`, overlay `helix-git`,
   `nixConfig` for the cachix substituter).
 - `unwrapped.nix` — `rustPlatform.buildRustPackage` for the `hx` binary
-  (nixpkgs `helix-unwrapped` style: `versionCheckHook`, no grammars in the
-  default runtime).
+  (nixpkgs `helix-unwrapped` style): self-contained `fetchFromGitHub` with
+  the pinned master `rev`, no grammars in the default runtime. There is no
+  helix flake input — the rev lives here so nix-update can manage it.
 - `package.nix` — `symlinkJoin` wrapper (nixpkgs `helix` style): grammars
   from nixpkgs' `tree-sitter-grammars` collection pinned to the revs in
   helix's `languages.toml`, `hx` wrapped with `HELIX_RUNTIME`.
@@ -30,12 +31,17 @@ GitHub Actions auto-update and a `mtul` cachix binary cache.
 - Version strings follow nixpkgs: `<base>-unstable-<8-char rev>`, base
   version read from the workspace root `Cargo.toml` (`[workspace.package]`;
   `helix-term/Cargo.toml` only has `version.workspace = true`).
+- No versionCheckHook: `hx --version` prints the upstream version
+  (`helix <base> (rev)`), which never contains the `-unstable-<shortrev>`
+  suffix, so the hook would always fail. It works in nixpkgs only because
+  their version is the pinned tag.
 - Keep packaging aligned with nixpkgs'
   `pkgs/by-name/he/helix{,-unwrapped}/package.nix`, including
-  `fetchCargoVendor` + `cargoHash`. `build.sh` auto-fixes `cargoHash` with a
-  targeted sed on that single line when Cargo.lock changes (CI commits the
-  fix). nix-update cannot do this — it only updates hashes when src/version
-  changes, and our src is a flake input it cannot bump.
+  `fetchCargoVendor` + `cargoHash`. Rev, src hash and cargoHash are updated
+  together by `update.sh` via
+  `nix-update --flake helix-unwrapped --version=branch=master --build` —
+  this only works because src is a fetcher inside the package definition,
+  not a flake input. No other path may change rev or hashes.
 - Grammars that fail to build are fixed in `grammarsOverlay` inside
   `package.nix` (e.g. `NIX_CFLAGS_COMPILE = "-std=gnu17"` for C23/glibc
   conflicts, `dontPatch = true` when nixpkgs' patch is already in the pinned
@@ -69,9 +75,9 @@ GitHub Actions auto-update and a `mtul` cachix binary cache.
   verify a `.narinfo` (URL is the bare store hash, no package name) returns
   200. Note that a `.drv` path differs from its output path — compare the
   right one.
-- `nix flake update helix` alone is not enough: `grammars.json` must be
-  regenerated for the new rev and `cargoHash` re-fixed (both handled by
-  `update.sh`).
+- `update.sh` is the only updater (nix-update for rev+hashes, then
+  grammars.json regeneration, then a build as validation). CI build runs
+  are pure validation and never modify hashes.
 - CI never calls `cachix push` explicitly: `.github/actions/setup` installs
   the cachix daemon (`useDaemon: true`), a post-build hook that pushes every
   store path CI builds — build-time deps included. Keep that mode; a

@@ -1,17 +1,26 @@
 #!/usr/bin/env bash
-# Update the pinned helix rev, regenerate grammars.json for the new rev,
-# then rebuild. Used by CI and runnable locally.
+# Unified updater, following nixpkgs' pkgs/by-name/he/helix/update.sh:
+# nix-update bumps the pinned rev and regenerates the src and cargo hashes in
+# one step, then grammars.json is regenerated for the new source and the
+# package is built as validation. This is the only path that changes rev or
+# hashes — CI build runs are pure validation.
 set -euo pipefail
 
 cd "$(dirname "$0")"
 
-nix flake update helix
+nix profile install --priority 100 nixpkgs#nix-update nixpkgs#nurl
 
-helix_src="$(nix eval --raw .#helix-unwrapped.src)"
-nix-shell -p nurl python3 --run \
-  "python3 generate-grammars.py '$helix_src/languages.toml' -o grammars.json -j 16"
+echo "Updating helix-unwrapped (rev + src hash + cargoHash)..."
+nix-update --flake helix-unwrapped --version=branch=master --build
 
-./build.sh
+echo "Fetching updated helix source..."
+helix_src="$(nix eval --raw .#helix-unwrapped.src --accept-flake-config)"
 
-new_rev="$(nix flake metadata --json | jq -r '.locks.nodes.helix.locked.rev')"
-echo "helix updated to $new_rev"
+echo "Generating grammars.json..."
+python3 generate-grammars.py "$helix_src/languages.toml" -o grammars.json -j 16
+
+echo "Building helix..."
+nix build .#helix --accept-flake-config -L
+
+rev="$(sed -n 's/.*rev = "\([^"]*\)".*/\1/p' unwrapped.nix | head -1)"
+echo "helix is now pinned to $rev"

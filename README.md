@@ -5,8 +5,9 @@ A standalone Nix flake that builds Helix from a pinned rev of
 nixpkgs' package, and built with *your* nixpkgs toolchain so it reuses the
 same binary cache as the rest of your system.
 
-A GitHub Actions workflow periodically runs `nix flake update helix`, builds
-the result, pushes it to the `mtul` cachix cache, and opens a PR.
+A GitHub Actions workflow periodically runs `./update.sh` (nix-update +
+grammars.json regeneration), builds the result, pushes it to the `mtul`
+cachix cache, and opens a PR.
 
 ## Usage
 
@@ -40,12 +41,11 @@ nix.settings.trusted-public-keys = [ "mtul.cachix.org-1:<key>" ];
 Packaging mirrors nixpkgs' two-package layout (`pkgs/by-name/he/helix-unwrapped`
 and `pkgs/by-name/he/helix`):
 
-- **`unwrapped.nix`** — `rustPlatform.buildRustPackage` from the pinned
-  source, using the nixpkgs you pass in (no third-party overlay, so rustc
-  and shared build inputs hit `cache.nixos.org`), with `versionCheckHook`.
-  One deviation from nixpkgs: cargo dependencies are vendored from
-  `Cargo.lock` with `allowBuiltinFetchGit`, so git dependencies need no
-  `outputHashes` and there is no cargo hash to maintain on updates.
+- **`unwrapped.nix`** — `rustPlatform.buildRustPackage` with a
+  self-contained `fetchFromGitHub` pinning the helix master rev (no flake
+  input), using the nixpkgs you pass in (no third-party overlay, so rustc
+  and shared build inputs hit `cache.nixos.org`), and `fetchCargoVendor` +
+  `cargoHash` exactly like nixpkgs.
 - **`package.nix`** — `symlinkJoin` wrapper (as in nixpkgs): grammars come
   from nixpkgs' maintained `tree-sitter-grammars` collection, pinned to the
   revisions recorded in helix's `languages.toml` via `grammars.json`
@@ -54,8 +54,10 @@ and `pkgs/by-name/he/helix`):
 - **Version**: derived from the workspace `Cargo.toml` plus the pinned rev,
   in nixpkgs' `-unstable-<shortrev>` style; `hx --version` also embeds the
   rev via `HELIX_NIX_BUILD_REV`.
-- **Source**: the `helix` flake input (tracked by `flake.lock`, default
-  `master`). Pin it to a release tag by editing the input URL in `flake.nix`.
+- **Updating**: `./update.sh` (or the weekly workflow) runs
+  `nix-update --version=branch=master` to bump the rev and both hashes in
+  one step, then regenerates `grammars.json`. To pin a release instead,
+  replace `rev` with `tag` in `unwrapped.nix`.
 
 ## Auto-update workflow
 

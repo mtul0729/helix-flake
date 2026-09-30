@@ -41,6 +41,5 @@ jobs:
             New rev: `${{ env.REV }}`
           token: ${{ secrets.GITHUB_TOKEN }}
           add-paths: |
-            flake.lock
             grammars.json
             unwrapped.nix
