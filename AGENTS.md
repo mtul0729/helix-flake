@@ -49,8 +49,9 @@ GitHub Actions auto-update and a `mtul` cachix binary cache.
 - Full build happens in CI (do not run full `nix build` locally unless the
   user asks); single grammars are cheap:
   `nix build .#helix.passthru.tree-sitter-grammars.tree-sitter-<name> -L`
-- Verify the cachix cache serves a path:
-  `curl -s -o /dev/null -w "%{http_code}" https://mtul.cachix.org/<store-name>.narinfo`
+- Verify the cachix cache serves a path (URL is the bare store hash, NO name
+  suffix):
+  `curl -s -o /dev/null -w "%{http_code}" https://mtul.cachix.org/<hash>.narinfo`
 
 ## Version control
 
@@ -60,9 +61,18 @@ GitHub Actions auto-update and a `mtul` cachix binary cache.
 
 ## CI gotchas
 
+- **Nix version pin**: CI installs Nix 2.34.8 (`install_url` in both
+  workflows) to match the consumer machines. Nix 2.35 changed
+  structuredAttrs serialization, so derivations built with 2.35 hash
+  differently than 2.34 — a CI built with the wrong version produces a
+  completely useless cache. Bump the pin together with local Nix upgrades.
 - `cachix/cachix-action@v16` has no `nixBuildArgs` input — building must be a
   separate explicit `nix build` step, then `cachix push mtul result`.
 - A green build job with empty cachix is a silent failure mode: always
-  verify a `.narinfo` returns 200 after "successful" pushes.
+  verify a `.narinfo` (URL is the bare store hash, no package name) returns
+  200 after "successful" pushes.
 - `nix flake update helix` alone is not enough: `grammars.json` must be
   regenerated for the new rev (use `update.sh`).
+- Locally, Nix caches flake-ref resolution for ~1h: after pushing a new
+  commit, `nix build github:mtul0729/helix-flake#...` may silently evaluate
+  the OLD commit — use `--refresh` when verifying pushes.
