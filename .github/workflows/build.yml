@@ -1,0 +1,31 @@
+name: Build helix
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push to cachix
+        if: env.CACHIX_AUTH_TOKEN != ''
+        uses: cachix/cachix-action@v16
+        with:
+          name: mtul
+          authToken: ${{ env.CACHIX_AUTH_TOKEN }}
+          extraPullNames: mtul
+          nixBuildArgs: .#helix --accept-flake-config -L
+
+      - name: Build (no cache push)
+        if: env.CACHIX_AUTH_TOKEN == ''
+        run: nix build .#helix --accept-flake-config -L
