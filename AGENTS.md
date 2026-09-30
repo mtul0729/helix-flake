@@ -28,9 +28,9 @@ GitHub Actions auto-update and a `mtul` cachix binary cache.
 
 ## Conventions
 
-- Version strings follow nixpkgs: `<base>-unstable-<8-char rev>`, base
-  version read from the workspace root `Cargo.toml` (`[workspace.package]`;
-  `helix-term/Cargo.toml` only has `version.workspace = true`).
+- Version strings follow the documented nixpkgs convention (pkgs/README.md):
+  `<latest upstream release>-unstable-<commit date>`, as a literal that
+  nix-update rewrites on updates (same pattern as nixpkgs' steelix).
 - No versionCheckHook: `hx --version` prints the upstream version
   (`helix <base> (rev)`), which never contains the `-unstable-<shortrev>`
   suffix, so the hook would always fail. It works in nixpkgs only because

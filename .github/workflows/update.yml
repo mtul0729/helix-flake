@@ -25,7 +25,7 @@ jobs:
       - name: Update helix, regenerate grammars.json, build
         run: |
           nix flake update helix
-          echo "REV=$(nix flake metadata --json | jq -r '.locks.nodes.helix.locked.rev')" >> "$GITHUB_ENV"
+          echo "REV=$(nix eval --raw .#helix-unwrapped.passthru.rev --accept-flake-config)" >> "$GITHUB_ENV"
           ./update.sh
 
       - name: Create PR

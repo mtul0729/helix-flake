@@ -22,5 +22,5 @@ python3 generate-grammars.py "$helix_src/languages.toml" -o grammars.json -j 16
 echo "Building helix..."
 nix build .#helix --accept-flake-config -L
 
-rev="$(sed -n 's/.*rev = "\([^"]*\)".*/\1/p' unwrapped.nix | head -1)"
+rev="$(nix eval --raw .#helix-unwrapped.passthru.rev --accept-flake-config)"
 echo "helix is now pinned to $rev"

@@ -19,13 +19,11 @@ rustPlatform.buildRustPackage (
   in
     {
       pname = "helix-unwrapped";
-      # helix-term/Cargo.toml only has `version.workspace = true`; the version
-      # lives in the workspace root Cargo.toml. nixpkgs convention for
-      # packages tracking an unreleased rev: -unstable-<shortrev>.
-      version =
-        (builtins.fromTOML (builtins.readFile "${finalAttrs.src}/Cargo.toml")).workspace.package.version
-        + "-unstable-"
-        + builtins.substring 0 8 rev;
+      # nixpkgs convention (pkgs/README.md): packages tracking an upstream
+      # commit use <latest upstream release>-unstable-<commit date>, as a
+      # literal maintained by nix-update (--version=branch=master), like
+      # nixpkgs' steelix.
+      version = "25.7.1-unstable-2026-09-29";
 
       src = fetchFromGitHub {
         owner = "helix-editor";
@@ -70,6 +68,7 @@ rustPlatform.buildRustPackage (
 
       passthru = {
         updateScript = ./update.sh;
+        inherit rev;
       };
 
       meta = {
