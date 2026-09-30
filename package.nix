@@ -17,6 +17,12 @@
       tree-sitter-agda = prev.tree-sitter-agda.override {
         excludeBrokenTreeSitterJson = false;
       };
+      tree-sitter-perl = prev.tree-sitter-perl.overrideAttrs {
+        # The rev pinned by languages.toml defines its own `bsearch`, which
+        # conflicts with the C23 bsearch in glibc >= 2.44 headers when gcc
+        # defaults to -std=gnu23.
+        NIX_CFLAGS_COMPILE = "-std=gnu17";
+      };
       tree-sitter-beancount = prev.tree-sitter-beancount.override {
         excludeBrokenTreeSitterJson = false;
       };
