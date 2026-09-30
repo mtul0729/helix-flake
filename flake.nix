@@ -23,25 +23,31 @@
     systems = [
       "x86_64-linux"
       "aarch64-linux"
-      "x86_64-darwin"
       "aarch64-darwin"
     ];
     eachSystem = f:
       nixpkgs.lib.genAttrs systems (system:
         f (import nixpkgs {localSystem.system = system;}));
     gitRev = helix.rev or helix.dirtyRev or null;
+    # Bind the flake input up front: inside the `packages`/`overlays` lets,
+    # the name `helix` is shadowed by the wrapper package (let bindings are
+    # recursive in Nix).
+    helixSrc = helix;
   in {
     packages = eachSystem (pkgs: let
-      # NB: `helix` here is the flake input; do not shadow it.
-      helixPkg = pkgs.callPackage ./package.nix {helixSrc = helix; inherit gitRev;};
+      helix-unwrapped = pkgs.callPackage ./unwrapped.nix {inherit helixSrc gitRev;};
+      helix = pkgs.callPackage ./package.nix {inherit helix-unwrapped;};
     in {
-      inherit helixPkg;
-      helix = helixPkg;
-      default = helixPkg;
+      inherit helix-unwrapped;
+      inherit helix;
+      default = helix;
     });
 
-    overlays.default = final: prev: {
-      helix-git = final.callPackage ./package.nix {helixSrc = helix; inherit gitRev;};
+    overlays.default = final: prev: let
+      helix-unwrapped = final.callPackage ./unwrapped.nix {inherit helixSrc gitRev;};
+    in {
+      inherit helix-unwrapped;
+      helix-git = final.callPackage ./package.nix {inherit helix-unwrapped;};
     };
 
     nixConfig = {
