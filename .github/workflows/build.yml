@@ -2,44 +2,47 @@ name: Build helix
 on:
   push:
     branches: [main, master]
+  pull_request:
   workflow_dispatch:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-24.04, system: x86_64-linux }
+          - { os: ubuntu-24.04-arm, system: aarch64-linux }
+          - { os: macos-14, system: aarch64-darwin }
+    runs-on: ${{ matrix.os }}
     permissions:
       contents: write
-    env:
-      CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
     steps:
       - uses: actions/checkout@v4
 
-      - uses: cachix/install-nix-action@v31
-        with:
-          # Pin to the same Nix the consumers run. Nix 2.35 changed
-          # structuredAttrs serialization, so derivations built with a newer
-          # Nix hash differently and the cachix cache never hits locally.
-          install_url: https://releases.nixos.org/nix/nix-2.34.8/install
-          extra_nix_config: |
-            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+      - uses: ./.github/actions/setup
 
-      # Daemon mode: a post-build hook pushes every store path CI builds to
-      # the cache automatically (build-time deps included) — no explicit push.
-      - uses: cachix/cachix-action@v16
-        if: env.CACHIX_AUTH_TOKEN != ''
-        with:
-          name: mtul
-          authToken: ${{ env.CACHIX_AUTH_TOKEN }}
-          useDaemon: true
-          skipAddingSubstituter: true
+      - name: Evaluate flake
+        run: nix flake check --accept-flake-config
 
-      # Builds .#helix, auto-fixing cargoHash if Cargo.lock changed.
+      # Builds the matrix system's helix, updating cargoHash via nix-update
+      # if Cargo.lock changed.
       - name: Build
-        run: ./build.sh
+        run: ./build.sh ${{ matrix.system }}
 
-      # Commit the auto-fixed cargoHash, if any.
+      # Only one runner commits the auto-fixed cargoHash, to avoid races.
+      - name: Detect cargoHash fix
+        id: hash
+        if: matrix.system == 'x86_64-linux'
+        run: |
+          if git diff --quiet -- unwrapped.nix; then
+            echo "changed=0" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=1" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Commit cargoHash fix
-        if: env.CARGO_HASH_CHANGED == '1'
+        if: matrix.system == 'x86_64-linux' && steps.hash.outputs.changed == '1'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"

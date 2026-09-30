@@ -31,7 +31,8 @@ rustPlatform.buildRustPackage (
     '';
   in
     {
-      name = "helix-unwrapped-${version}";
+      pname = "helix-unwrapped";
+      inherit version;
 
       src = helixSrc;
 
@@ -67,7 +68,7 @@ rustPlatform.buildRustPackage (
 
       passthru = {
         updateScript = ./update.sh;
-        inherit helixSrc version;
+        inherit helixSrc;
       };
 
       meta = {

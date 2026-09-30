@@ -38,7 +38,9 @@ GitHub Actions auto-update and a `mtul` cachix binary cache.
 - Grammars that fail to build are fixed in `grammarsOverlay` inside
   `package.nix` (e.g. `NIX_CFLAGS_COMPILE = "-std=gnu17"` for C23/glibc
   conflicts, `dontPatch = true` when nixpkgs' patch is already in the pinned
-  rev), not by editing `grammars.json`.
+  rev), not by editing `grammars.json`. Keep the overlay minimal: only
+  entries verified necessary by CI; do not copy workarounds from nixpkgs
+  speculatively.
 - Update `systems` in `flake.nix` if nixpkgs support changes (x86_64-darwin
   was dropped by nixpkgs 26.11).
 
@@ -61,23 +63,22 @@ GitHub Actions auto-update and a `mtul` cachix binary cache.
 
 ## CI gotchas
 
-- **Nix version pin**: CI installs Nix 2.34.8 (`install_url` in both
-  workflows) to match the consumer machines. Nix 2.35 changed
-  structuredAttrs serialization, so derivations built with 2.35 hash
-  differently than 2.34 — a CI built with the wrong version produces a
-  completely useless cache. Bump the pin together with local Nix upgrades.
-- `cachix/cachix-action@v16` has no `nixBuildArgs` input — building must be a
-  separate explicit `nix build` step, then `cachix push mtul result`.
-- A green build job with empty cachix is a silent failure mode: always
+- A green build job with an empty cache is a silent failure mode: always
   verify a `.narinfo` (URL is the bare store hash, no package name) returns
-  200 after "successful" pushes.
+  200. Note that a `.drv` path differs from its output path — compare the
+  right one.
 - `nix flake update helix` alone is not enough: `grammars.json` must be
   regenerated for the new rev and `cargoHash` re-fixed (both handled by
   `update.sh`).
-- CI never calls `cachix push` explicitly: `cachix-action` runs with
-  `useDaemon: true`, a post-build hook that pushes every store path CI
-  builds — build-time deps included. Keep that mode; a runtime-only
-  explicit push leaves consumers rebuilding source-prep derivations.
+- CI never calls `cachix push` explicitly: `.github/actions/setup` installs
+  the cachix daemon (`useDaemon: true`), a post-build hook that pushes every
+  store path CI builds — build-time deps included. Keep that mode; a
+  runtime-only explicit push leaves consumers rebuilding source-prep
+  derivations.
+- build.yml builds all three platforms (x86_64-linux, aarch64-linux,
+  aarch64-darwin) via a matrix; update.yml stays single-platform and only
+  opens the PR. Derivation hashes do NOT depend on the Nix version — no
+  version pinning anywhere.
 - Locally, Nix caches flake-ref resolution for ~1h: after pushing a new
   commit, `nix build github:mtul0729/helix-flake#...` may silently evaluate
   the OLD commit — use `--refresh` when verifying pushes.

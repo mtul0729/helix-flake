@@ -3,6 +3,11 @@
 """
 Generate grammar information for Helix editor by parsing languages.toml
 and fetching source information using nurl in parallel.
+
+Copied from nixpkgs (pkgs/by-name/he/helix/generate_grammars.py). Deliberately
+vendored; re-sync manually if upstream fixes bugs. The `_` -> `-` name
+conversion here must stay in sync with package.nix's
+`lib.removePrefix "tree-sitter-"` lookups.
 """
 
 import argparse
