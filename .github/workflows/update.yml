@@ -24,7 +24,6 @@ jobs:
 
       - name: Update helix, regenerate grammars.json, build
         run: |
-          nix flake update helix
           echo "REV=$(nix eval --raw .#helix-unwrapped.passthru.rev --accept-flake-config)" >> "$GITHUB_ENV"
           ./update.sh
 
@@ -33,7 +32,6 @@ jobs:
       # (The repo-level "Allow GitHub Actions to create pull requests"
       # toggle is off, so PRs are not available to the bot.)
       - name: Commit and push update
-        if: env.CACHIX_AUTH_TOKEN != ''
         run: |
           if git diff --quiet -- grammars.json unwrapped.nix; then
             echo "helix already up to date at ${{ env.REV }}"
