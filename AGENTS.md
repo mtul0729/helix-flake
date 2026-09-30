@@ -82,7 +82,9 @@ GitHub Actions auto-update and a `mtul` cachix binary cache.
   the cachix daemon (`useDaemon: true`), a post-build hook that pushes every
   store path CI builds — build-time deps included. Keep that mode; a
   runtime-only explicit push leaves consumers rebuilding source-prep
-  derivations.
+  derivations. Do NOT set `skipAddingSubstituter`: the same action must also
+  add the cache as a substituter — pushing without pulling makes every CI
+  run recompile helix even when the cache has it.
 - build.yml builds all three platforms (x86_64-linux, aarch64-linux,
   aarch64-darwin) via a matrix; update.yml stays single-platform and only
   opens the PR. Derivation hashes do NOT depend on the Nix version — no

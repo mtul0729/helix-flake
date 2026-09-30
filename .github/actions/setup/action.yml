@@ -21,4 +21,3 @@ runs:
         name: mtul
         authToken: ${{ inputs.cachix-auth-token }}
         useDaemon: true
-        skipAddingSubstituter: true
