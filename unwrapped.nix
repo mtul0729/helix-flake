@@ -38,7 +38,7 @@ rustPlatform.buildRustPackage (
       # fetchCargoVendor, like nixpkgs: a single fixed-output derivation for
       # all cargo dependencies, so it is substitutable and cacheable.
       # update.sh refreshes the hash automatically when Cargo.lock changes.
-      cargoHash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+      cargoHash = "sha256-kJP6LMcx5z91XzO4PNbNvSSWOjVvJW35O7Z4uW9J+m8=";
 
       nativeBuildInputs = [
         installShellFiles
