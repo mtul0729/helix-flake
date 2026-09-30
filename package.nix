@@ -47,6 +47,11 @@
       tree-sitter-tact = prev.tree-sitter-tact.override {
         excludeBrokenTreeSitterJson = false;
       };
+      tree-sitter-tlaplus = prev.tree-sitter-tlaplus.overrideAttrs {
+        # nixpkgs' tree-sitter.json patch is already contained in the rev
+        # pinned by languages.toml, so applying it fails interactively.
+        dontPatch = true;
+      };
       tree-sitter-vue = prev.tree-sitter-vue.override {
         excludeBrokenTreeSitterJson = false;
       };
