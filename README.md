@@ -11,15 +11,15 @@ the result, pushes it to the `mtul` cachix cache, and opens a PR.
 ## Usage
 
 ```console
-$ nix run github:<you>/helix-flake
-$ nix profile install github:<you>/helix-flake#helix
+$ nix run github:mtul0729/helix-flake
+$ nix profile install github:mtul0729/helix-flake#helix
 ```
 
 In your NixOS / home-manager config, follow your own nixpkgs so the Rust
 toolchain and build inputs come from the same nixpkgs you already have cached:
 
 ```nix
-inputs.helix-flake.url = "github:<you>/helix-flake";
+inputs.helix-flake.url = "github:mtul0729/helix-flake";
 inputs.helix-flake.inputs.nixpkgs.follows = "nixpkgs";
 
 # then either

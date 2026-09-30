@@ -46,7 +46,7 @@
 
     nixConfig = {
       extra-substituters = ["https://mtul.cachix.org"];
-      extra-trusted-public-keys = ["mtul.cachix.org-1:REPLACE_WITH_YOUR_KEY"];
+      extra-trusted-public-keys = ["mtul.cachix.org-1:WEuapLtfyNPLkcCbwQh3jLxVwEwQNcDXhru9lbuhDlo="];
     };
   };
 }
