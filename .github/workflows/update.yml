@@ -28,18 +28,20 @@ jobs:
           echo "REV=$(nix eval --raw .#helix-unwrapped.passthru.rev --accept-flake-config)" >> "$GITHUB_ENV"
           ./update.sh
 
-      - name: Create PR
-        uses: peter-evans/create-pull-request@v7
-        with:
-          branch: update/helix
-          delete-branch: true
-          title: "Update helix to ${{ env.REV }}"
-          body: |
-            Automated update of the `helix` flake input, `grammars.json` and
-            `cargoHash`.
-
-            New rev: `${{ env.REV }}`
-          token: ${{ secrets.GITHUB_TOKEN }}
-          add-paths: |
-            grammars.json
-            unwrapped.nix
+      # Push directly: the build above already validated the new rev and
+      # hashes, so a bad rev is stopped here rather than landing on master.
+      # (The repo-level "Allow GitHub Actions to create pull requests"
+      # toggle is off, so PRs are not available to the bot.)
+      - name: Commit and push update
+        if: env.CACHIX_AUTH_TOKEN != ''
+        run: |
+          if git diff --quiet -- grammars.json unwrapped.nix; then
+            echo "helix already up to date at ${{ env.REV }}"
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add grammars.json unwrapped.nix
+            git commit -m "Update helix to ${{ env.REV }}"
+            git pull --rebase origin master
+            git push
+          fi
