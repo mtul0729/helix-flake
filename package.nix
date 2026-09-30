@@ -12,18 +12,57 @@
   pkgs,
   tree-sitter-grammars,
   lockedGrammars ? lib.importJSON ./grammars.json,
+  # NB: the workarounds below are required by the grammar revs pinned in
+  # grammars.json (generated from helix's languages.toml), NOT by nixpkgs
+  # versions — removing them breaks the grammar build. Keep in sync when
+  # regenerating grammars.json.
   grammarsOverlay ? (
     final: prev: {
+      tree-sitter-agda = prev.tree-sitter-agda.override {
+        excludeBrokenTreeSitterJson = false;
+      };
+      tree-sitter-beancount = prev.tree-sitter-beancount.override {
+        excludeBrokenTreeSitterJson = false;
+      };
+      tree-sitter-git-rebase = prev.tree-sitter-git-rebase.overrideAttrs {
+        dontPatch = true;
+      };
+      tree-sitter-glimmer = prev.tree-sitter-glimmer.override {
+        excludeBrokenTreeSitterJson = false;
+      };
+      tree-sitter-janet-simple = prev.tree-sitter-janet-simple.override {
+        excludeBrokenTreeSitterJson = false;
+      };
       tree-sitter-perl = prev.tree-sitter-perl.overrideAttrs {
-        # The rev pinned by languages.toml defines its own `bsearch`, which
-        # conflicts with the C23 bsearch in glibc >= 2.44 headers when gcc
-        # defaults to -std=gnu23.
+        # The pinned rev defines its own `bsearch`, which conflicts with the
+        # C23 bsearch in glibc >= 2.44 headers when gcc defaults to -std=gnu23.
         NIX_CFLAGS_COMPILE = "-std=gnu17";
       };
+      tree-sitter-qmljs = prev.tree-sitter-qmljs.overrideAttrs {
+        dontCheckForBrokenSymlinks = true;
+      };
+      tree-sitter-sql = prev.tree-sitter-sql.override {
+        generate = false;
+      };
+      tree-sitter-strace = prev.tree-sitter-strace.override {
+        excludeBrokenTreeSitterJson = false;
+      };
+      tree-sitter-tact = prev.tree-sitter-tact.override {
+        excludeBrokenTreeSitterJson = false;
+      };
       tree-sitter-tlaplus = prev.tree-sitter-tlaplus.overrideAttrs {
-        # nixpkgs' tree-sitter.json patch is already contained in the rev
-        # pinned by languages.toml, so applying it fails interactively.
+        # nixpkgs' tree-sitter.json patch is already contained in the pinned
+        # rev, so applying it fails interactively.
         dontPatch = true;
+      };
+      tree-sitter-vue = prev.tree-sitter-vue.override {
+        excludeBrokenTreeSitterJson = false;
+      };
+      tree-sitter-wit = prev.tree-sitter-wit.override {
+        excludeBrokenTreeSitterJson = false;
+      };
+      tree-sitter-yuck = prev.tree-sitter-yuck.override {
+        excludeBrokenTreeSitterJson = false;
       };
     }
   ),

@@ -32,15 +32,17 @@ GitHub Actions auto-update and a `mtul` cachix binary cache.
   `helix-term/Cargo.toml` only has `version.workspace = true`).
 - Keep packaging aligned with nixpkgs'
   `pkgs/by-name/he/helix{,-unwrapped}/package.nix`, including
-  `fetchCargoVendor` + `cargoHash`. `build.sh` auto-fixes `cargoHash` when
-  Cargo.lock changes (CI commits the fix); never hand-edit it unless
-  `build.sh` is unavailable.
+  `fetchCargoVendor` + `cargoHash`. `build.sh` auto-fixes `cargoHash` with a
+  targeted sed on that single line when Cargo.lock changes (CI commits the
+  fix). nix-update cannot do this — it only updates hashes when src/version
+  changes, and our src is a flake input it cannot bump.
 - Grammars that fail to build are fixed in `grammarsOverlay` inside
   `package.nix` (e.g. `NIX_CFLAGS_COMPILE = "-std=gnu17"` for C23/glibc
   conflicts, `dontPatch = true` when nixpkgs' patch is already in the pinned
-  rev), not by editing `grammars.json`. Keep the overlay minimal: only
-  entries verified necessary by CI; do not copy workarounds from nixpkgs
-  speculatively.
+  rev), not by editing `grammars.json`. The overlay entries are required by
+  the grammar revs pinned in grammars.json (not by nixpkgs versions) — CI
+  verified that removing the nixpkgs-inherited ones breaks the build. Keep
+  them in sync when regenerating grammars.json.
 - Update `systems` in `flake.nix` if nixpkgs support changes (x86_64-darwin
   was dropped by nixpkgs 26.11).
 
