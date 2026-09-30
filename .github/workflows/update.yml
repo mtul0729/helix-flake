@@ -33,11 +33,18 @@ jobs:
           echo "REV=$(nix flake metadata --json | jq -r '.locks.nodes.helix.locked.rev')" >> "$GITHUB_ENV"
           ./update.sh
 
-      # Push the full build closure (including build-time deps like the
-      # cargo vendor dir), not just the runtime closure of `result`.
-      - name: Push to cachix
+      # Daemon mode: a post-build hook pushes every store path CI builds to
+      # the cache automatically (build-time deps included) — no explicit push.
+      - uses: cachix/cachix-action@v16
         if: env.CACHIX_AUTH_TOKEN != ''
-        run: nix run nixpkgs#cachix -- push mtul "$(nix eval --raw .#helix.drvPath)"
+        with:
+          name: mtul
+          authToken: ${{ env.CACHIX_AUTH_TOKEN }}
+          useDaemon: true
+          skipAddingSubstituter: true
+
+      - name: Build (daemon pushes automatically)
+        run: ./build.sh
 
       - name: Create PR
         uses: peter-evans/create-pull-request@v7

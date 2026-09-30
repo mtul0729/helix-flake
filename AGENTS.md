@@ -74,10 +74,10 @@ GitHub Actions auto-update and a `mtul` cachix binary cache.
 - `nix flake update helix` alone is not enough: `grammars.json` must be
   regenerated for the new rev and `cargoHash` re-fixed (both handled by
   `update.sh`).
-- CI pushes the full BUILD closure (`cachix push mtul $(nix eval --raw
-  .#helix.drvPath)`), so build-time deps like the cargo vendor dir are also
-  cached; a runtime-only `cachix push result` leaves consumers rebuilding
-  source-prep derivations locally.
+- CI never calls `cachix push` explicitly: `cachix-action` runs with
+  `useDaemon: true`, a post-build hook that pushes every store path CI
+  builds — build-time deps included. Keep that mode; a runtime-only
+  explicit push leaves consumers rebuilding source-prep derivations.
 - Locally, Nix caches flake-ref resolution for ~1h: after pushing a new
   commit, `nix build github:mtul0729/helix-flake#...` may silently evaluate
   the OLD commit — use `--refresh` when verifying pushes.
