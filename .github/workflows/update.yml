@@ -25,25 +25,17 @@ jobs:
           extra_nix_config: |
             access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
 
-      - name: Update helix input
+      - name: Update helix, regenerate grammars.json, build
         run: |
           nix flake update helix
           echo "REV=$(nix flake metadata --json | jq -r '.locks.nodes.helix.locked.rev')" >> "$GITHUB_ENV"
+          ./update.sh
 
-      # Push build results to the mtul cachix cache so your machines only
-      # download. Set the CACHIX_AUTH_TOKEN repository secret to enable.
-      - name: Build and push to cachix
+      # Push the build closure (helix, runtime, grammars) to the mtul cachix
+      # cache. Requires the CACHIX_AUTH_TOKEN repository secret.
+      - name: Push to cachix
         if: env.CACHIX_AUTH_TOKEN != ''
-        uses: cachix/cachix-action@v16
-        with:
-          name: mtul
-          authToken: ${{ env.CACHIX_AUTH_TOKEN }}
-          extraPullNames: mtul
-          nixBuildArgs: .#helix --accept-flake-config -L
-
-      - name: Build (no cache push)
-        if: env.CACHIX_AUTH_TOKEN == ''
-        run: nix build .#helix --accept-flake-config -L
+        run: nix run nixpkgs#cachix -- push mtul result
 
       - name: Create PR
         uses: peter-evans/create-pull-request@v7
@@ -52,7 +44,10 @@ jobs:
           delete-branch: true
           title: "Update helix to ${{ env.REV }}"
           body: |
-            Automated update of the `helix` flake input.
+            Automated update of the `helix` flake input and `grammars.json`.
 
             New rev: `${{ env.REV }}`
           token: ${{ secrets.GITHUB_TOKEN }}
+          add-paths: |
+            flake.lock
+            grammars.json

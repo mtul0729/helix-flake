@@ -17,15 +17,11 @@ jobs:
           extra_nix_config: |
             access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push to cachix
-        if: env.CACHIX_AUTH_TOKEN != ''
-        uses: cachix/cachix-action@v16
-        with:
-          name: mtul
-          authToken: ${{ env.CACHIX_AUTH_TOKEN }}
-          extraPullNames: mtul
-          nixBuildArgs: .#helix --accept-flake-config -L
-
-      - name: Build (no cache push)
-        if: env.CACHIX_AUTH_TOKEN == ''
+      - name: Build
         run: nix build .#helix --accept-flake-config -L
+
+      # Push the build closure (helix, runtime, grammars) to the mtul cachix
+      # cache. Requires the CACHIX_AUTH_TOKEN repository secret.
+      - name: Push to cachix
+        if: env.CACHIX_AUTH_TOKEN != ''
+        run: nix run nixpkgs#cachix -- push mtul result
