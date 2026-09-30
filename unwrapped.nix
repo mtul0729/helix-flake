@@ -23,7 +23,7 @@ rustPlatform.buildRustPackage (
       # commit use <latest upstream release>-unstable-<commit date>, as a
       # literal maintained by nix-update (--version=branch=master), like
       # nixpkgs' steelix.
-      version = "25.7.1-unstable-2026-09-29";
+      version = "25.07.1-unstable-2026-09-29";
 
       src = fetchFromGitHub {
         owner = "helix-editor";
