@@ -27,12 +27,6 @@ jobs:
           extra_nix_config: |
             access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
 
-      - name: Update helix, regenerate grammars.json, build
-        run: |
-          nix flake update helix
-          echo "REV=$(nix flake metadata --json | jq -r '.locks.nodes.helix.locked.rev')" >> "$GITHUB_ENV"
-          ./update.sh
-
       # Daemon mode: a post-build hook pushes every store path CI builds to
       # the cache automatically (build-time deps included) — no explicit push.
       - uses: cachix/cachix-action@v16
@@ -43,8 +37,11 @@ jobs:
           useDaemon: true
           skipAddingSubstituter: true
 
-      - name: Build (daemon pushes automatically)
-        run: ./build.sh
+      - name: Update helix, regenerate grammars.json, build
+        run: |
+          nix flake update helix
+          echo "REV=$(nix flake metadata --json | jq -r '.locks.nodes.helix.locked.rev')" >> "$GITHUB_ENV"
+          ./update.sh
 
       - name: Create PR
         uses: peter-evans/create-pull-request@v7
