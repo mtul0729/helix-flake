@@ -38,7 +38,7 @@ jobs:
           else
             git config user.name "github-actions[bot]"
             git config user.email "github-actions[bot]@users.noreply.github.com"
-            git add grammars.json unwrapped.nix
+            git add flake.lock grammars.json unwrapped.nix
             git commit -m "Update helix to ${{ env.REV }}"
             git pull --rebase origin master
             git push

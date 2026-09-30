@@ -10,6 +10,9 @@ cd "$(dirname "$0")"
 
 nix profile install --priority 100 nixpkgs#nix-update nixpkgs#nurl
 
+echo "Updating flake inputs (nixpkgs)..."
+nix flake update
+
 echo "Updating helix-unwrapped (rev + src hash + cargoHash)..."
 nix-update --flake helix-unwrapped --version=branch=master --build
 

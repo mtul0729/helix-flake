@@ -55,6 +55,7 @@ and `pkgs/by-name/he/helix`):
   `<release>-unstable-<commit date>` (a literal rewritten by nix-update);
   `hx --version` also embeds the rev via `HELIX_NIX_BUILD_REV`.
 - **Updating**: `./update.sh` (or the weekly workflow) runs
+  `nix flake update` (keeps the nixpkgs toolchain fresh), then
   `nix-update --version=branch=master` to bump the rev and both hashes in
   one step, then regenerates `grammars.json`. To pin a release instead,
   replace `rev` with `tag` in `unwrapped.nix`.
