@@ -17,7 +17,9 @@ echo "Updating helix-unwrapped (rev + src hash + cargoHash)..."
 nix-update --flake helix-unwrapped --version=branch=master --build
 
 echo "Fetching updated helix source..."
-helix_src="$(nix eval --raw .#helix-unwrapped.src --accept-flake-config)"
+# nix build (not nix eval) realizes the src fixed-output derivation, so the
+# files actually exist on disk even when it isn't in the binary cache.
+helix_src="$(nix build --print-out-paths .#helix-unwrapped.src --accept-flake-config)"
 
 echo "Generating grammars.json..."
 python3 generate-grammars.py "$helix_src/languages.toml" -o grammars.json -j 16
