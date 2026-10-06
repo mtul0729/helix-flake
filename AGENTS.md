@@ -23,8 +23,10 @@ GitHub Actions auto-update and a `mtul` cachix binary cache.
 - `update.sh` — one-shot updater: `nix flake update helix` → regenerate
   `grammars.json` → `nix build`.
 - `.github/workflows/build.yml` — build + cachix push on push/手动触发.
-- `.github/workflows/update.yml` — weekly auto-update PR (updates flake.lock
-  and grammars.json, builds, pushes to cachix, opens a PR).
+- `.github/workflows/update.yml` — daily auto-update (updates flake.lock,
+  unwrapped.nix and grammars.json, builds, pushes to cachix, then pushes the
+  commit straight to master — the repo-level "Allow GitHub Actions to create
+  pull requests" toggle is off, so the bot cannot open PRs).
 
 ## Conventions
 

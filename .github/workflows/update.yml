@@ -1,8 +1,8 @@
 name: Update helix
 on:
   schedule:
-    # Mondays at 03:00 UTC
-    - cron: "0 3 * * 1"
+    # Daily at 03:00 UTC
+    - cron: "0 3 * * *"
   workflow_dispatch:
 
 concurrency:
@@ -33,7 +33,7 @@ jobs:
       # toggle is off, so PRs are not available to the bot.)
       - name: Commit and push update
         run: |
-          if git diff --quiet -- grammars.json unwrapped.nix; then
+          if git diff --quiet -- flake.lock grammars.json unwrapped.nix; then
             echo "helix already up to date at ${{ env.REV }}"
           else
             git config user.name "github-actions[bot]"

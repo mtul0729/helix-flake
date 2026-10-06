@@ -7,7 +7,8 @@ same binary cache as the rest of your system.
 
 A GitHub Actions workflow periodically runs `./update.sh` (nix-update +
 grammars.json regeneration), builds the result, pushes it to the `mtul`
-cachix cache, and opens a PR.
+cachix cache, and pushes the updated pins straight to master (not a PR —
+the repo is configured without Actions PR creation).
 
 ## Usage
 
@@ -54,7 +55,7 @@ and `pkgs/by-name/he/helix`):
 - **Version**: nixpkgs' documented convention for commit-tracking packages,
   `<release>-unstable-<commit date>` (a literal rewritten by nix-update);
   `hx --version` also embeds the rev via `HELIX_NIX_BUILD_REV`.
-- **Updating**: `./update.sh` (or the weekly workflow) runs
+- **Updating**: `./update.sh` (or the daily workflow) runs
   `nix flake update` (keeps the nixpkgs toolchain fresh), then
   `nix-update --version=branch=master` to bump the rev and both hashes in
   one step, then regenerates `grammars.json`. To pin a release instead,
@@ -62,9 +63,10 @@ and `pkgs/by-name/he/helix`):
 
 ## Auto-update workflow
 
-`.github/workflows/update.yml` runs weekly: updates the `helix` input, builds
+`.github/workflows/update.yml` runs daily: updates the `helix` input, builds
 the package (so a bad rev fails CI instead of your machines), pushes results
-to cachix, and opens/updates a PR.
+to cachix, and commits the new pins back to master. The commit only lands if
+the build succeeded — a failed rev or grammar build aborts the job before it.
 
 Set the `CACHIX_AUTH_TOKEN` repository secret to enable cache pushes (cache
 name `mtul` is configured in the workflows and in `flake.nix`'s
