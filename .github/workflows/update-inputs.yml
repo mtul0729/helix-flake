@@ -1,0 +1,48 @@
+name: Update flake inputs
+on:
+  schedule:
+    # Daily at 04:00 UTC, staggered from the helix update job (03:00 UTC)
+    - cron: "0 4 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: update-inputs
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: ./.github/actions/setup
+        with:
+          cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+
+      # Inputs own flake.lock only; helix's rev/hashes stay with
+      # update.yml. Keeping them separate means a broken helix master no
+      # longer blocks the nixpkgs bump.
+      - name: Update inputs and build
+        run: |
+          nix flake update --accept-flake-config
+          nix build .#helix --accept-flake-config -L
+
+      # Push directly for the same reason as update.yml: the build above is
+      # the gate, so a broken input is stopped here rather than landing on
+      # master. (The repo-level "Allow GitHub Actions to create pull
+      # requests" toggle is off, so PRs are not available to the bot.)
+      - name: Commit and push flake.lock
+        run: |
+          if git diff --quiet -- flake.lock; then
+            echo "flake inputs already up to date"
+          else
+            rev="$(jq -r '.nodes.nixpkgs.locked.rev' flake.lock)"
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add flake.lock
+            git commit -m "Update nixpkgs to ${rev:0:9}"
+            git pull --rebase origin master
+            git push
+          fi

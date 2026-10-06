@@ -55,18 +55,25 @@ and `pkgs/by-name/he/helix`):
 - **Version**: nixpkgs' documented convention for commit-tracking packages,
   `<release>-unstable-<commit date>` (a literal rewritten by nix-update);
   `hx --version` also embeds the rev via `HELIX_NIX_BUILD_REV`.
-- **Updating**: `./update.sh` (or the daily workflow) runs
-  `nix flake update` (keeps the nixpkgs toolchain fresh), then
+- **Updating**: `./update.sh` (or the daily helix workflow) runs
   `nix-update --version=branch=master` to bump the rev and both hashes in
-  one step, then regenerates `grammars.json`. To pin a release instead,
-  replace `rev` with `tag` in `unwrapped.nix`.
+  one step, then regenerates `grammars.json`. The nixpkgs pin is kept fresh
+  separately, by its own daily workflow. To pin a release instead, replace
+  `rev` with `tag` in `unwrapped.nix`.
 
 ## Auto-update workflow
 
-`.github/workflows/update.yml` runs daily: updates the `helix` input, builds
-the package (so a bad rev fails CI instead of your machines), pushes results
-to cachix, and commits the new pins back to master. The commit only lands if
-the build succeeded — a failed rev or grammar build aborts the job before it.
+Two workflows keep the pins fresh, daily, staggered an hour apart. Both gate
+on a successful build — no build, no commit — and then push straight to
+master (not a PR: the repo is configured without Actions PR creation).
+
+- `update-inputs.yml` (04:00 UTC) — `nix flake update`, builds, commits
+  `flake.lock`. Keeps the nixpkgs toolchain fresh even on days helix master
+  has nothing new.
+- `update.yml` (03:00 UTC) — bumps the helix rev and hashes, regenerates
+  `grammars.json`, builds the package (so a bad rev fails CI instead of your
+  machines), pushes results to cachix, and commits `unwrapped.nix` +
+  `grammars.json`.
 
 Set the `CACHIX_AUTH_TOKEN` repository secret to enable cache pushes (cache
 name `mtul` is configured in the workflows and in `flake.nix`'s

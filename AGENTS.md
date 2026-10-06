@@ -20,10 +20,13 @@ GitHub Actions auto-update and a `mtul` cachix binary cache.
   grammar), generated; do not edit by hand.
 - `generate-grammars.py` — regenerates `grammars.json` with `nurl`
   (copied from nixpkgs' helix package).
-- `update.sh` — one-shot updater: `nix flake update helix` → regenerate
-  `grammars.json` → `nix build`.
+- `update.sh` — one-shot helix updater: bump the rev and hashes with
+  nix-update → regenerate `grammars.json` → `nix build`. Does not touch
+  flake inputs (no longer runs `nix flake update`).
 - `.github/workflows/build.yml` — build + cachix push on push/手动触发.
-- `.github/workflows/update.yml` — daily auto-update (updates flake.lock,
+- `.github/workflows/update-inputs.yml` — daily flake input update (`nix
+  flake update` → build → commit `flake.lock`); owns `flake.lock` alone.
+- `.github/workflows/update.yml` — daily helix auto-update (updates
   unwrapped.nix and grammars.json, builds, pushes to cachix, then pushes the
   commit straight to master — the repo-level "Allow GitHub Actions to create
   pull requests" toggle is off, so the bot cannot open PRs).
@@ -77,9 +80,10 @@ GitHub Actions auto-update and a `mtul` cachix binary cache.
   verify a `.narinfo` (URL is the bare store hash, no package name) returns
   200. Note that a `.drv` path differs from its output path — compare the
   right one.
-- `update.sh` is the only updater (nix-update for rev+hashes, then
+- `update.sh` is the only helix updater (nix-update for rev+hashes, then
   grammars.json regeneration, then a build as validation). CI build runs
-  are pure validation and never modify hashes.
+  are pure validation and never modify hashes. Flake inputs are updated
+  separately by `.github/workflows/update-inputs.yml`.
 - CI never calls `cachix push` explicitly: `.github/actions/setup` installs
   the cachix daemon (`useDaemon: true`), a post-build hook that pushes every
   store path CI builds — build-time deps included. Keep that mode; a
@@ -88,8 +92,10 @@ GitHub Actions auto-update and a `mtul` cachix binary cache.
   add the cache as a substituter — pushing without pulling makes every CI
   run recompile helix even when the cache has it.
 - build.yml builds all three platforms (x86_64-linux, aarch64-linux,
-  aarch64-darwin) via a matrix; update.yml stays single-platform and only
-  opens the PR. Derivation hashes do NOT depend on the Nix version — no
+  aarch64-darwin) via a matrix; the two update workflows stay
+  single-platform and each own one file set — update-inputs.yml only commits
+  `flake.lock`, update.yml only commits `grammars.json`/`unwrapped.nix` — so
+  neither can swallow the other's changes. Derivation hashes do NOT depend on
   version pinning anywhere.
 - Locally, Nix caches flake-ref resolution for ~1h: after pushing a new
   commit, `nix build github:mtul0729/helix-flake#...` may silently evaluate
