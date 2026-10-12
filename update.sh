@@ -10,6 +10,17 @@ cd "$(dirname "$0")"
 
 nix profile install --priority 100 nixpkgs#nix-update nixpkgs#nurl
 
+# Fast path: languages.toml — and therefore grammars.json — is fully determined
+# by the pinned rev, so when master has not moved there is nothing to do but
+# the expensive part would still run (~5min of per-grammar nurl prefetches).
+# Keep the remote in sync with unwrapped.nix's fetchFromGitHub.
+current_rev="$(nix eval --raw .#helix-unwrapped.passthru.rev --accept-flake-config)"
+upstream_rev="$(git ls-remote https://github.com/helix-editor/helix refs/heads/master | cut -f1 || true)"
+if [ -n "$upstream_rev" ] && [ "$upstream_rev" = "$current_rev" ]; then
+  echo "helix already pinned to master $current_rev; nothing to update"
+  exit 0
+fi
+
 echo "Updating helix-unwrapped (rev + src hash + cargoHash)..."
 nix-update --flake helix-unwrapped --version=branch=master --build
 

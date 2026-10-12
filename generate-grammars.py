@@ -19,6 +19,7 @@ import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 
 @dataclass
@@ -27,6 +28,66 @@ class Grammar:
     git_url: str
     rev: str
     subpath: str | None = None
+
+
+def url_parts(grammar: Grammar) -> tuple[str, str]:
+    """(owner, repo) of a grammar's git URL."""
+    owner, repo = urlparse(grammar.git_url).path.strip("/").split("/")[:2]
+    return owner, repo.removesuffix(".git")
+
+
+# Forges whose fetcher carries no explicit `domain`, because its default already
+# points at them. Anything else (self-hosted instances, gitea) records `domain`.
+DEFAULT_HOSTS = {
+    "fetchFromGitHub": "github.com",
+    "fetchFromGitLab": "gitlab.com",
+    "fetchFromSourcehut": "git.sr.ht",
+}
+
+
+def entry_is_current(entry: dict[str, Any], grammar: Grammar) -> bool:
+    """Whether an entry from a previous run still describes `grammar`.
+
+    A git rev names immutable content, so a match on owner/repo/rev means the
+    nurl output would be byte-identical and can be reused; anything else is
+    refetched. Note this also carries over nurl *output-format* changes from
+    an older nurl version — regenerate with --force if that matters.
+    """
+    owner, repo = url_parts(grammar)
+    nurl = entry.get("nurl", {})
+    args = nurl.get("args", {})
+    if (args.get("owner"), args.get("repo"), args.get("rev")) != (
+        owner,
+        repo,
+        grammar.rev,
+    ):
+        return False
+
+    host = args.get("domain") or DEFAULT_HOSTS.get(nurl.get("fetcher", ""))
+    return (
+        # An unknown host could have produced this entry from a different URL,
+        # so refetch instead of trusting it.
+        host == urlparse(grammar.git_url).hostname
+        and entry.get("subpath") == grammar.subpath
+    )
+
+
+def load_existing(path: Path) -> dict[str, Any]:
+    """Entries of a previous run, keyed by grammar name.
+
+    Failed entries are dropped so they get retried.
+    """
+    try:
+        with open(path) as f:
+            data = json.load(f)
+    except FileNotFoundError:
+        return {}
+
+    return {
+        name: entry
+        for name, entry in data.items()
+        if isinstance(entry, dict) and "error" not in entry and entry.get("nurl")
+    }
 
 
 async def run_nurl(url: str, rev: str, semaphore: asyncio.Semaphore) -> dict[str, Any]:
@@ -75,34 +136,45 @@ def parse_languages_toml(toml_path: Path) -> list[Grammar]:
 
 
 async def fetch_all_grammars(
-    grammars: list[Grammar], max_parallel: int
+    grammars: list[Grammar], max_parallel: int, existing: dict[str, Any]
 ) -> dict[str, Any]:
-    """Fetch nurl information for all grammars in parallel."""
+    """Fetch nurl information for all grammars in parallel.
+
+    Grammars already described by `existing` are reused instead of being
+    prefetched again, which is every grammar in the common case.
+    """
     semaphore = asyncio.Semaphore(max_parallel)
-    results = {}
     total = len(grammars)
-    completed = 0
+    results = {}
+    pending = []
 
-    tasks = []
     for grammar in grammars:
+        cached = existing.get(grammar.name)
+        if cached is not None and entry_is_current(cached, grammar):
+            results[grammar.name] = cached
+            continue
         task = run_nurl(grammar.git_url, grammar.rev, semaphore)
-        tasks.append((grammar, task))
+        pending.append((grammar, asyncio.create_task(task)))
 
-    for grammar, task in tasks:
+    reused = total - len(pending)
+    if reused:
+        print(f"Reusing {reused}/{total} unchanged grammars", file=sys.stderr)
+
+    for grammar, task in pending:
         try:
             result = await task
             results[grammar.name] = {
                 "nurl": result,
                 "subpath": grammar.subpath,
             }
-            completed += 1
-            print(f"[{completed}/{total}] ✓ {grammar.name}", file=sys.stderr)
+            print(f"[{len(results)}/{total}] ✓ {grammar.name}", file=sys.stderr)
         except Exception as e:
-            completed += 1
-            print(f"[{completed}/{total}] ✗ {grammar.name}: {e}", file=sys.stderr)
+            print(f"[{len(results)}/{total}] ✗ {grammar.name}: {e}", file=sys.stderr)
             results[grammar.name] = {"error": str(e)}
 
-    return results
+    # Keep key order that of languages.toml, reused grammars included, so that
+    # a run only ever diffs the grammars that actually changed.
+    return {grammar.name: results[grammar.name] for grammar in grammars}
 
 
 async def main():
@@ -128,6 +200,12 @@ async def main():
         default=os.cpu_count(),
         help=f"number of parallel nurl instances (default: {os.cpu_count()})",
     )
+    parser.add_argument(
+        "-f",
+        "--force",
+        action="store_true",
+        help="refetch every grammar, ignoring entries of the previous run",
+    )
 
     args = parser.parse_args()
 
@@ -139,8 +217,10 @@ async def main():
     grammars = parse_languages_toml(args.languages_toml)
     print(f"Found {len(grammars)} grammars", file=sys.stderr)
 
+    existing = {} if args.force else load_existing(args.output)
+
     print(f"Fetching grammar information ({args.jobs} parallel jobs)...", file=sys.stderr)
-    results = await fetch_all_grammars(grammars, args.jobs)
+    results = await fetch_all_grammars(grammars, args.jobs, existing)
 
     errors = [name for name, data in results.items() if "error" in data]
     if errors:

@@ -19,10 +19,17 @@ GitHub Actions auto-update and a `mtul` cachix binary cache.
 - `grammars.json` — grammar lock data (owner/repo/rev/hash/subpath per
   grammar), generated; do not edit by hand.
 - `generate-grammars.py` — regenerates `grammars.json` with `nurl`
-  (copied from nixpkgs' helix package).
-- `update.sh` — one-shot helix updater: bump the rev and hashes with
-  nix-update → regenerate `grammars.json` → `nix build`. Does not touch
-  flake inputs (no longer runs `nix flake update`).
+  (copied from nixpkgs' helix package). Extended beyond upstream: entries whose
+  owner/repo/rev/subpath are unchanged since the previous `grammars.json` are
+  reused instead of prefetched (a rev is immutable, so the nurl result cannot
+  differ), which is what keeps daily update runs short — the full refetch of
+  all ~300 grammars costs ~5min and dominated every run. Use `-f/--force` to
+  bypass that reuse.
+- `update.sh` — one-shot helix updater: exits immediately when master is still
+  the pinned rev (`grammars.json` is fully determined by the rev, so nothing
+  could change), otherwise bump the rev and hashes with nix-update →
+  regenerate `grammars.json` → `nix build`. Does not touch flake inputs (no
+  longer runs `nix flake update`).
 - `.github/workflows/build.yml` — build + cachix push on push/手动触发.
 - `.github/workflows/update-inputs.yml` — daily flake input update (`nix
   flake update` → build → commit `flake.lock`); owns `flake.lock` alone.
